@@ -1,0 +1,150 @@
+version: "3.6"
+services:
+
+######## TEST @@@@@@@@@@@@@@@
+
+  traefik:
+    hostname: traefik
+    image: traefik:alpine
+    container_name: traefik
+    domainname: ${DOMAINNAME}
+    command:
+      - "--docker"
+      - "--api"
+      - "--logLevel=DEBUG"
+      - "--debug=true"
+    networks:
+      - uavhanet
+#      - bridge
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    environment:
+      - TZ=${TZ}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=Host:traefik.${DOMAINNAME}"
+      - "traefik.backend=traefik"
+      - "traefik.port=8080"
+      - "traefik.docker.network=dockerha_uavhanet"
+#      - "traefik.docker.network=bridge"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${USERDIR}/dockerha/uavtraefik:/etc/traefik
+      - ${USERDIR}/dockerha/shared:/shared
+      - ${USERDIR}/dockerha/cert:/cert
+
+
+  whoami:
+    image: containous/whoami
+    hostname: whoami
+    domainname: ${DOMAINNAME}
+#    ports:
+#      - "81:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=Host:whoami.${DOMAINNAME}"
+      - "traefik.backend=whoami"
+      - "traefik.docker.network=dockerha_uavhanet" 
+    networks:
+      - uavhanet
+#      - bridge
+
+#Portainer - WebUI for Containers
+  portainer:
+    image: portainer/portainer
+    container_name: portainer
+    domainname: ${DOMAINNAME}
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${USERDIR}/dockerha/uavportainer/data:/data
+      - ${USERDIR}/dockerha/shared:/shared
+#    command: --no-auth
+#      - "--admin-password "Aropat0909!""
+    environment:
+      - TZ=${TZ}
+    networks:
+      - uavhanet
+#      - bridge
+    labels:
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=Host:portainer.${DOMAINNAME}"
+      - "traefik.backend=portainer"
+      - "traefik.port=9000"
+      - "traefik.docker.network=dockerha_uavhanet"
+#      - "traefik.docker.network=bridge"
+
+# Watchtower - Automatic Update of Containers/Apps
+  watchtower:
+    container_name: watchtower
+    hostname: watchtower
+#    restart: always
+    image: v2tec/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --schedule "0 0 4 * * *" --cleanup
+    networks:
+      - uavhanet
+
+
+#Openssl - self signed certificates for Containers
+  openssl:
+#    image: centos:7
+    build:
+      context: ${USERDIR}/dockerha/ #when alternative Dockerfile name used, context must be
+      dockerfile: Dockerfile.openssl
+    container_name: openssl
+    domainname: ${DOMAINNAME}
+#    ports:
+#      - "9001:9001"
+    volumes:
+      - ${USERDIR}/dockerha/cert:/cert
+      - ${USERDIR}/dockerha/shared/create-cert.sh:/shared/create-cert.sh
+#      - /var/run/docker.sock:/var/run/docker.sock
+#      - ${USERDIR}/dockerha/shared:/shared
+#    command: ["/bin/sh", "create-cert.sh"]
+    command:
+      - /bin/sh
+      - create-cert.sh
+#    entrypoint: ["openssl", "req", "newkey rsa:4096", "-x509", "-nodes", "-keyout traefik.key", "-new", "-out traefik.crt", "-subj /CN=*.docker.localhost", "-sha256", "-days 365"]
+#    entrypoint: 
+#      - openssl
+#      - req 
+#      - "-newkey rsa:4096" 
+#      - "-x509" 
+#      - "-nodes" 
+#      - "-keyout traefik.key"
+#      - "-new"
+#      - "-out traefik.crt"
+#      - "-subj /CN=*.docker.localhost"
+#      - "-sha256"
+#      - "-days 365"  
+    environment:
+      - TZ=${TZ}
+    networks:
+      - uavhanet
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.frontend.rule=Host:openssl.${DOMAINNAME}"
+#      - "traefik.backend=openssl"
+#      - "traefik.port=9001"
+#      - "traefik.docker.network=dockerha_uavhanet"
+
+
+######### FRONTENDS ##########
+
+
+######### UTILITIES ##########
+
+
+networks:
+  uavhanet:
+    driver: overlay
+#  bridge:
+#    driver: bridge
+#volumes:
+#  shared:  
+#  cert:

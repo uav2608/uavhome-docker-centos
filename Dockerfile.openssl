@@ -1,0 +1,20 @@
+FROM alpine
+
+RUN apk update && \
+  apk add --no-cache openssl && \
+  rm -rf /var/cache/apk/*
+
+RUN mkdir /shared
+
+WORKDIR /shared
+
+#FROM centos:7
+#FROM frapsoft/openssl
+
+##RUN yum update -y && \
+##    yum install -y openssl && \
+##    yum clean all -y
+
+#ADD ./shared/create-cert.sh /shared
+
+#RUN chmod 777 create-cert.sh
